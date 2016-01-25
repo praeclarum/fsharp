@@ -17,7 +17,7 @@
     <OutputPath>bin\Debug</OutputPath>
     <Optimize>true</Optimize>
     <DebugSymbols>true</DebugSymbols>
-    <DefineConstants>NO_WINDOWS;NO_PDB_WRITER;NO_PDB_READER;CROSS_PLATFORM_COMPILER;EXTENSIONTYPING;COMPILER;INCLUDE_METADATA_READER;INCLUDE_METADATA_WRITER;EXTENSIBLE_DUMPER;$(DefineConstants)</DefineConstants>
+    <DefineConstants>IKVM_REFLECTION_EMIT;NO_CONSOLE_COLORS;NO_WINDOWS;NO_PDB_WRITER;NO_PDB_READER;NO_STRONG_NAMES;CROSS_PLATFORM_COMPILER;EXTENSIONTYPING;COMPILER;INCLUDE_METADATA_READER;INCLUDE_METADATA_WRITER;EXTENSIBLE_DUMPER;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release</OutputPath>
@@ -418,12 +418,6 @@
     <Compile Include="..\vs\IncrementalBuild.fs">
       <Link>Driver\IncrementalBuild.fs</Link>
     </Compile>
-    <Compile Include="..\fsc.fsi">
-      <Link>Driver\fsc.fsi</Link>
-    </Compile>
-    <Compile Include="..\fsc.fs">
-      <Link>Driver\fsc.fs</Link>
-    </Compile>
     <Compile Include="InternalsVisibleTo.fs">
       <Link>InternalsVisibleTo.fs</Link>
     </Compile>
@@ -435,10 +429,21 @@
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core" />
     <Reference Include="Xamarin.iOS" />
+    <Reference Include="IKVM.Reflection.iOS">
+      <HintPath>..\..\..\dependencies\mono\4.5\XamariniOS\IKVM.Reflection.iOS.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Resources\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\iOS\Xamarin.iOS.FSharp.targets" />
   <ItemGroup />
+  <ItemGroup>
+    <None Include="..\fsc.fsi">
+      <Link>Driver\fsc.fsi</Link>
+    </None>
+    <None Include="..\fsc.fs">
+      <Link>Driver\fsc.fs</Link>
+    </None>
+  </ItemGroup>
 </Project>

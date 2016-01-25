@@ -20,10 +20,17 @@ open Microsoft.FSharp.Compiler.AbstractIL.IL
 open Microsoft.FSharp.Core.Printf
 
 open System
-open System.Reflection
-open System.Reflection.Emit
 open System.Runtime.InteropServices
 open System.Collections.Generic
+
+#if IKVM_REFLECTION_EMIT
+open IKVM
+open IKVM.Reflection
+open IKVM.Reflection.Emit
+#else
+open System.Reflection
+open System.Reflection.Emit
+#endif
 
 let codeLabelOrder = ComparisonIdentity.Structural<ILCodeLabel>
 
@@ -39,18 +46,22 @@ let wrapCustomAttr setCustomAttr (cinfo, bytes) =
 
 let logRefEmitCalls = false
 
+#if IKVM_REFLECTION_EMIT
+type IKVM.Reflection.Universe with 
+#else
 type System.AppDomain with 
+#endif
     member x.DefineDynamicAssemblyAndLog(asmName,flags,asmDir:string)  =
         let asmB = x.DefineDynamicAssembly(asmName,flags,asmDir)
         if logRefEmitCalls then 
             printfn "open System"
             printfn "open System.Reflection"
-            printfn "open System.Reflection.Emit"
+            printfn "open Reflection.Emit"
             printfn "let assemblyBuilder%d = System.AppDomain.CurrentDomain.DefineDynamicAssembly(AssemblyName(Name=\"%s\"),enum %d,%A)" (abs <| hash asmB) asmName.Name (LanguagePrimitives.EnumToValue flags) asmDir
         asmB
         
 
-type System.Reflection.Emit.AssemblyBuilder with 
+type Reflection.Emit.AssemblyBuilder with 
     member asmB.DefineDynamicModuleAndLog(a,b,c) =  
         let modB = asmB.DefineDynamicModule(a,b,c)
         if logRefEmitCalls then printfn "let moduleBuilder%d = assemblyBuilder%d.DefineDynamicModule(%A,%A,%A)" (abs <| hash modB) (abs <| hash asmB) a b c
@@ -69,7 +80,7 @@ type System.Reflection.Emit.AssemblyBuilder with
         asmB.SetCustomAttribute(cab)
 
 
-type System.Reflection.Emit.ModuleBuilder with 
+type Reflection.Emit.ModuleBuilder with 
     member modB.GetArrayMethodAndLog(aty,nm,flags,rty,tys) =
         if logRefEmitCalls then printfn "moduleBuilder%d.GetArrayMethod(%A,%A,%A,%A,%A)" (abs <| hash modB) aty nm flags rty tys
         modB.GetArrayMethod(aty,nm,flags,rty,tys)
@@ -97,7 +108,7 @@ type System.Reflection.Emit.ModuleBuilder with
         wrapCustomAttr modB.SetCustomAttribute (cinfo,bytes)
 
 
-type System.Reflection.Emit.ConstructorBuilder with 
+type Reflection.Emit.ConstructorBuilder with 
     member consB.SetImplementationFlagsAndLog(attrs) =
         if logRefEmitCalls then printfn "constructorBuilder%d.SetImplementationFlags(enum %d)" (abs <| hash consB) (LanguagePrimitives.EnumToValue attrs)
         consB.SetImplementationFlags(attrs)
@@ -111,7 +122,7 @@ type System.Reflection.Emit.ConstructorBuilder with
         if logRefEmitCalls then printfn "let ilg%d = constructorBuilder%d.GetILGenerator()" (abs <| hash ilG) (abs <| hash consB) 
         ilG
 
-type System.Reflection.Emit.MethodBuilder with 
+type Reflection.Emit.MethodBuilder with 
     member methB.SetImplementationFlagsAndLog(attrs) =
         if logRefEmitCalls then printfn "methodBuilder%d.SetImplementationFlags(enum %d)" (abs <| hash methB) (LanguagePrimitives.EnumToValue attrs)
         methB.SetImplementationFlags(attrs)
@@ -144,7 +155,7 @@ type System.Reflection.Emit.MethodBuilder with
 
 
 
-type System.Reflection.Emit.TypeBuilder with 
+type Reflection.Emit.TypeBuilder with 
     member typB.CreateTypeAndLog() = 
         if logRefEmitCalls then printfn "typeBuilder%d.CreateType()" (abs <| hash typB)
         typB.CreateType()
@@ -197,10 +208,10 @@ type System.Reflection.Emit.TypeBuilder with
         wrapCustomAttr typB.SetCustomAttribute (cinfo,bytes)
 
 
-type System.Reflection.Emit.OpCode with 
+type Reflection.Emit.OpCode with 
     member opcode.RefEmitName = (string (System.Char.ToUpper(opcode.Name.[0])) +  opcode.Name.[1..]).Replace(".","_").Replace("_i4","_I4")
 
-type System.Reflection.Emit.ILGenerator with 
+type Reflection.Emit.ILGenerator with 
     member ilG.DeclareLocalAndLog(ty:System.Type,isPinned) = 
         if logRefEmitCalls then printfn "ilg%d.DeclareLocal(typeof<%s>,%b)" (abs <| hash ilG) ty.FullName isPinned
         ilG.DeclareLocal(ty,isPinned)
@@ -596,7 +607,7 @@ let TypeBuilderInstantiationT =
         if runningOnMono then 
             Type.GetType("System.Reflection.MonoGenericClass")
         else
-            Type.GetType("System.Reflection.Emit.TypeBuilderInstantiation")
+            Type.GetType("Reflection.Emit.TypeBuilderInstantiation")
     assert (not (isNull ty))
     ty
 
@@ -1103,7 +1114,7 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
             let aty = convType cenv emEnv  (ILType.Array(shape,typ)) 
             let ety = aty.GetElementType()
             let rty = ety.MakeByRefType() 
-            let meth = modB.GetArrayMethodAndLog(aty,"Address",System.Reflection.CallingConventions.HasThis,rty,Array.create shape.Rank (typeof<int>) )
+            let meth = modB.GetArrayMethodAndLog(aty,"Address",Reflection.CallingConventions.HasThis,rty,Array.create shape.Rank (typeof<int>) )
             ilG.EmitAndLog(OpCodes.Call,meth)
     | I_ldelem_any (shape,typ)     -> 
         if (shape = ILArrayShape.SingleDimensional)      then ilG.EmitAndLog(OpCodes.Ldelem,convType cenv emEnv  typ)
@@ -1115,7 +1126,7 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
                 if runningOnMono then 
                     getArrayMethInfo shape.Rank ety
                 else
-                    modB.GetArrayMethodAndLog(aty,"Get",System.Reflection.CallingConventions.HasThis,ety,Array.create shape.Rank (typeof<int>) )
+                    modB.GetArrayMethodAndLog(aty,"Get",Reflection.CallingConventions.HasThis,ety,Array.create shape.Rank (typeof<int>) )
             ilG.EmitAndLog(OpCodes.Call,meth)
 
     | I_stelem_any (shape,typ)     -> 
@@ -1128,7 +1139,7 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
                 if runningOnMono then 
                     setArrayMethInfo shape.Rank ety
                 else
-                    modB.GetArrayMethodAndLog(aty,"Set",System.Reflection.CallingConventions.HasThis,(null:Type),Array.append (Array.create shape.Rank (typeof<int>)) (Array.ofList [ ety ])) 
+                    modB.GetArrayMethodAndLog(aty,"Set",Reflection.CallingConventions.HasThis,(null:Type),Array.append (Array.create shape.Rank (typeof<int>)) (Array.ofList [ ety ])) 
             ilG.EmitAndLog(OpCodes.Call,meth)
 
     | I_newarr (shape,typ)         -> 
@@ -1136,7 +1147,7 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
         then ilG.EmitAndLog(OpCodes.Newarr,convType cenv emEnv  typ)
         else 
             let aty = convType cenv emEnv  (ILType.Array(shape,typ)) 
-            let meth = modB.GetArrayMethodAndLog(aty,".ctor",System.Reflection.CallingConventions.HasThis,(null:Type),Array.create shape.Rank (typeof<int>))
+            let meth = modB.GetArrayMethodAndLog(aty,".ctor",Reflection.CallingConventions.HasThis,(null:Type),Array.create shape.Rank (typeof<int>))
             ilG.EmitAndLog(OpCodes.Newobj,meth)
     | I_ldlen                      -> ilG.EmitAndLog(OpCodes.Ldlen)
     | I_mkrefany   typ             -> ilG.EmitAndLog(OpCodes.Mkrefany,convType cenv emEnv  typ)
