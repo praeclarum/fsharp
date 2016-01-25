@@ -102,7 +102,11 @@ let compilerOptionUsage (CompilerOption(s,tag,spec,_,_)) =
 let PrintCompilerOption (CompilerOption(_s,_tag,_spec,_,help) as compilerOption) =
     let flagWidth = 30 // fixed width for printing of flags, e.g. --warnaserror:<warn;...>
     let defaultLineWidth = 80 // the fallback width
+#if NO_WINDOWS
+    let lineWidth = defaultLineWidth
+#else
     let lineWidth = try System.Console.BufferWidth with e -> defaultLineWidth
+#endif
     let lineWidth = if lineWidth=0 then defaultLineWidth else lineWidth (* Have seen BufferWidth=0 on Linux/Mono *)
     // Lines have this form: <flagWidth><space><description>
     //   flagWidth chars - for flags description or padding on continuation lines.

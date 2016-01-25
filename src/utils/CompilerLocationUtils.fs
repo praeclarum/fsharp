@@ -49,7 +49,11 @@ module internal FSharpEnvironment =
     // WARNING: Do not change this revision number unless you absolutely know what you're doing.
     let FSharpBinaryMetadataFormatRevision = "2.0.0.0"
 
-#if !NO_WINDOWS
+#if NO_WINDOWS
+    let RegOpenKeyExW (_hKey : UIntPtr, _lpSubKey : string, _ulOptions : uint32, _samDesired : int, _phkResult : byref<UIntPtr>) : uint32 = 0u
+    let RegQueryValueExW (_hKey : UIntPtr, _lpValueName : string, _lpReserved : uint32, _lpType : byref<uint32>, _lpData : IntPtr, _lpchData : byref<int>) : uint32 = 0u
+    let RegCloseKey(_hKey : UIntPtr) = 0u
+#else
     [<DllImport("Advapi32.dll", CharSet = CharSet.Unicode, BestFitMapping = false)>]
     extern uint32 RegOpenKeyExW(UIntPtr _hKey, string _lpSubKey, uint32 _ulOptions, int _samDesired, UIntPtr & _phkResult);
 
@@ -184,8 +188,10 @@ module internal FSharpEnvironment =
         else
             None
     
-    let internal tryAppConfig (appConfigKey:string) = 
-
+    let internal tryAppConfig (appConfigKey:string) : string option = 
+#if NO_WINDOWS
+        None
+#else
         let locationFromAppConfig = ConfigurationSettings.AppSettings.[appConfigKey]
         System.Diagnostics.Debug.Print(sprintf "Considering appConfigKey %s which has value '%s'" appConfigKey locationFromAppConfig) 
 
@@ -196,6 +202,7 @@ module internal FSharpEnvironment =
             let locationFromAppConfig = locationFromAppConfig.Replace("{exepath}", exeAssemblyFolder)
             System.Diagnostics.Debug.Print(sprintf "Using path %s" locationFromAppConfig) 
             Some locationFromAppConfig
+#endif
 
     /// Try to find the F# compiler location by looking at the "fsharpi" script installed by F# packages
     let internal tryFsharpiScript(url:string) =
