@@ -179,9 +179,6 @@
     <Compile Include="..\..\absil\ilsupp.fsi">
       <Link>AbsIL\ilsupp.fsi</Link>
     </Compile>
-    <Compile Include="..\..\absil\ilsupp.fs">
-      <Link>AbsIL\ilsupp.fs</Link>
-    </Compile>
     <Compile Include="ilpars.fs">
       <Link>AbsIL\ilpars.fs</Link>
     </Compile>
@@ -438,4 +435,9 @@
     <Folder Include="Resources\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\iOS\Xamarin.iOS.FSharp.targets" />
+  <ItemGroup>
+    <None Include="..\..\absil\ilsupp.fs">
+      <Link>AbsIL\ilsupp.fs</Link>
+    </None>
+  </ItemGroup>
 </Project>
