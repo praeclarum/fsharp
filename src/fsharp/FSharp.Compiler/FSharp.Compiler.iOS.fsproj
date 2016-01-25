@@ -6,7 +6,7 @@
     <ProjectGuid>{2655B68F-1C79-4127-92BF-7C618C26A7E3}</ProjectGuid>
     <ProjectTypeGuids>{FEACFBD2-3405-455C-9665-78FE426C6842};{F2A71F9B-5D33-465A-A702-920D77279786}</ProjectTypeGuids>
     <OutputType>Library</OutputType>
-    <AssemblyName>FSharp.Compiler</AssemblyName>
+    <AssemblyName>FSharp.Compiler.iOS</AssemblyName>
     <DefineConstants>EXTENSIONTYPING;COMPILER;INCLUDE_METADATA_READER;INCLUDE_METADATA_WRITER;EXTENSIBLE_DUMPER;$(DefineConstants)</DefineConstants>
     <IPhoneResourcePrefix>Resources</IPhoneResourcePrefix>
     <ProductVersion>8.0.30703</ProductVersion>
