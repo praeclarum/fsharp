@@ -27,9 +27,11 @@ open System.Collections.Generic
 open IKVM
 open IKVM.Reflection
 open IKVM.Reflection.Emit
+type AType = IKVM.Reflection.Type
 #else
 open System.Reflection
 open System.Reflection.Emit
+type AType = System.Type
 #endif
 
 let codeLabelOrder = ComparisonIdentity.Structural<ILCodeLabel>
@@ -127,7 +129,7 @@ type Reflection.Emit.MethodBuilder with
         if logRefEmitCalls then printfn "methodBuilder%d.SetImplementationFlags(enum %d)" (abs <| hash methB) (LanguagePrimitives.EnumToValue attrs)
         methB.SetImplementationFlags(attrs)
 
-    member methB.SetReturnTypeAndLog(rt:System.Type) =
+    member methB.SetReturnTypeAndLog(rt:AType) =
         if logRefEmitCalls then printfn "methodBuilder%d.SetReturnType(typeof<%s>)" (abs <| hash methB) rt.FullName
         methB.SetReturnType(rt)
 
@@ -179,7 +181,7 @@ type Reflection.Emit.TypeBuilder with
         if logRefEmitCalls then printfn "let constructorBuilder%d = typeBuilder%d.DefineConstructor(enum %d,%A,%A)" (abs <| hash consB) (abs <| hash typB) (LanguagePrimitives.EnumToValue attrs) cconv parms
         consB
 
-    member typB.DefineFieldAndLog(nm,ty:System.Type,attrs)        = 
+    member typB.DefineFieldAndLog(nm,ty:AType,attrs)        = 
         if logRefEmitCalls then printfn "typeBuilder%d.DefineField(\"%s\",typeof<%s>,enum %d)" (abs <| hash typB) nm ty.FullName (LanguagePrimitives.EnumToValue attrs)
         typB.DefineField(nm,ty,attrs)
 
@@ -191,7 +193,7 @@ type Reflection.Emit.TypeBuilder with
         if logRefEmitCalls then printfn "typeBuilder%d.DefineEvent(\"%A\",enum %d,%A)" (abs <| hash typB) nm (LanguagePrimitives.EnumToValue attrs) ty
         typB.DefineEvent(nm,attrs,ty)
 
-    member typB.SetParentAndLog(ty:System.Type)        = 
+    member typB.SetParentAndLog(ty:AType)        = 
         if logRefEmitCalls then printfn "typeBuilder%d.SetParent(typeof<%s>)" (abs <| hash typB) ty.FullName
         typB.SetParent(ty)
 
@@ -212,7 +214,7 @@ type Reflection.Emit.OpCode with
     member opcode.RefEmitName = (string (System.Char.ToUpper(opcode.Name.[0])) +  opcode.Name.[1..]).Replace(".","_").Replace("_i4","_I4")
 
 type Reflection.Emit.ILGenerator with 
-    member ilG.DeclareLocalAndLog(ty:System.Type,isPinned) = 
+    member ilG.DeclareLocalAndLog(ty:AType,isPinned) = 
         if logRefEmitCalls then printfn "ilg%d.DeclareLocal(typeof<%s>,%b)" (abs <| hash ilG) ty.FullName isPinned
         ilG.DeclareLocal(ty,isPinned)
 
@@ -1029,7 +1031,7 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
                                                                  convCallConv callsig.CallingConv,
                                                                  convType cenv emEnv callsig.ReturnType,
                                                                  convTypesToArray cenv emEnv callsig.ArgTypes,
-                                                                 Unchecked.defaultof<System.Type[]>))
+                                                                 Unchecked.defaultof<AType[]>))
     | I_calli (tail,callsig,Some vartyps)     -> emitInstrTail ilG tail (fun () ->
                                                    ilG.EmitCalli(OpCodes.Calli,
                                                                  convCallConv callsig.CallingConv,
@@ -1306,7 +1308,7 @@ let buildGenParamsPass1b cenv emEnv (genArgs : Type array) (gps : ILGenericParam
         let gpB = genpBs.[i]
         // the Constraints are either the parent (base) type or interfaces.
         let constraintTs = convTypes cenv emEnv gp.Constraints
-        let interfaceTs,baseTs = List.partition (fun (typ:System.Type) -> typ.IsInterface) (ILList.toList constraintTs)
+        let interfaceTs,baseTs = List.partition (fun (typ:AType) -> typ.IsInterface) (ILList.toList constraintTs)
         // set base type constraint
         (match baseTs with
             [ ]      -> () // Q: should a baseType be set? It is in some samples. Should this be a failure case?
