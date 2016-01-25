@@ -28,6 +28,7 @@
     <EmbeddedResource Include="..\FSStrings.resx">
       <Link>FSStrings.resx</Link>
     </EmbeddedResource>
+    <Compile Include="Microsoft.Build.fs" />
     <Compile Include="obj\release\FSComp.fs">
       <Link>FSComp.fs</Link>
     </Compile>
