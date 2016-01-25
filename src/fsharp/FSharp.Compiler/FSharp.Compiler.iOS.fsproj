@@ -18,6 +18,7 @@
     <OutputPath>bin\Debug</OutputPath>
     <Optimize>true</Optimize>
     <DebugSymbols>true</DebugSymbols>
+    <DefineConstants>CROSS_PLATFORM_COMPILER;EXTENSIONTYPING;COMPILER;INCLUDE_METADATA_READER;INCLUDE_METADATA_WRITER;EXTENSIBLE_DUMPER;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release</OutputPath>
