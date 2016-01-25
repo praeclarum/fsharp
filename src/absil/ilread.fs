@@ -105,6 +105,9 @@ type BinaryFile() =
     abstract CountUtf8String : addr:int -> int
     abstract ReadUTF8String : addr: int -> string
 
+#if NO_WINDOWS
+#else
+
 /// Read file from memory mapped files
 module MemoryMapping = 
 
@@ -211,6 +214,7 @@ type MemoryMappedFile(hMap: MemoryMapping.HANDLE, start:nativeint) =
         let n = m.CountUtf8String i
         new System.String(NativePtr.ofNativeInt (m.Addr i), 0, n, System.Text.Encoding.UTF8)
 
+#endif
 
 //---------------------------------------------------------------------
 // Read file from memory blocks 
@@ -3960,8 +3964,16 @@ let ClosePdbReader pdb =
 #endif
 
 let OpenILModuleReader infile opts = 
-
+#if NO_WINDOWS
+        let mc = ByteFile(infile |> FileSystem.ReadAllBytesShim)
+        let modul,ilAssemblyRefs,pdb = genOpenBinaryReader infile mc opts
+        { modul = modul; 
+          ilAssemblyRefs = ilAssemblyRefs;
+          dispose = (fun () -> 
+            ClosePdbReader pdb) }
+#else
    try 
+
         let mmap = MemoryMappedFile.Create infile
         let modul,ilAssemblyRefs,pdb = genOpenBinaryReader infile mmap opts
         { modul = modul; 
@@ -3976,6 +3988,7 @@ let OpenILModuleReader infile opts =
           ilAssemblyRefs = ilAssemblyRefs;
           dispose = (fun () -> 
             ClosePdbReader pdb) }
+#endif
 
 // ++GLOBAL MUTABLE STATE
 let ilModuleReaderCache = 

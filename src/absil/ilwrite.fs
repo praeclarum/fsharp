@@ -476,8 +476,6 @@ let DumpDebugInfo (outfile:string) (info:PdbData) =
       writeScope "" meth.RootScope
       fprintfn sw ""
     
-#if ENABLE_STRONG_NAME_SIGNING
-
 //---------------------------------------------------------------------
 // Strong name signing
 //---------------------------------------------------------------------
@@ -524,7 +522,6 @@ type ILStrongNameSigner =
         | KeyPair kp -> Support.signerSignFileWithKeyPair file kp
         | KeyContainer kn -> Support.signerSignFileWithKeyContainer file kn
 
-#endif
 
 //---------------------------------------------------------------------
 // TYPES FOR TABLES

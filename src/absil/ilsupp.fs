@@ -857,6 +857,9 @@ let unlinkResource (ulLinkedResourceBaseRVA:int32) (pbLinkedResource:byte[]) =
     pResBuffer                              
                     
 
+#if NO_PDB_WRITER
+#else
+
 // PDB Writing
 
 [<ComImport; Interface>]
@@ -1365,7 +1368,6 @@ type ICLRStrongName =
     abstract StrongNameTokenFromAssembly : UnusedCOMMethod
     abstract StrongNameTokenFromAssemblyEx : UnusedCOMMethod
     abstract StrongNameTokenFromPublicKey : UnusedCOMMethod
-    
 
 [<System.Security.SecurityCritical; Interface>]
 [<ComImport; InterfaceType(ComInterfaceType.InterfaceIsIUnknown); Guid("BD39D1D2-BA2F-486A-89B0-B4B0CB466891")>]
@@ -1390,7 +1392,7 @@ let CreateInterface (
                     ([<MarshalAs(UnmanagedType.LPStruct)>] _guid : System.Guid),
                     ([<MarshalAs(UnmanagedType.Interface)>] _metaHost :
                         ICLRMetaHost byref)) : unit = failwith "CreateInterface"
-    
+
 let signerOpenPublicKeyFile filePath = 
     FileSystem.ReadAllBytesShim(filePath)
   
@@ -1493,3 +1495,4 @@ let signerSignFileWithKeyContainer fileName kcName =
     let iclrSN = getICLRStrongName()
     iclrSN.StrongNameSignatureGeneration(fileName, kcName, Unchecked.defaultof<byte[]>, 0u, ppb, &pcb) |> ignore
     iclrSN.StrongNameSignatureVerificationEx(fileName, true, &ok) |> ignore
+#endif
