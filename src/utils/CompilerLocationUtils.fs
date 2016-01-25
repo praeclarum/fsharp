@@ -49,6 +49,7 @@ module internal FSharpEnvironment =
     // WARNING: Do not change this revision number unless you absolutely know what you're doing.
     let FSharpBinaryMetadataFormatRevision = "2.0.0.0"
 
+#if !NO_WINDOWS
     [<DllImport("Advapi32.dll", CharSet = CharSet.Unicode, BestFitMapping = false)>]
     extern uint32 RegOpenKeyExW(UIntPtr _hKey, string _lpSubKey, uint32 _ulOptions, int _samDesired, UIntPtr & _phkResult);
 
@@ -57,6 +58,7 @@ module internal FSharpEnvironment =
 
     [<DllImport("Advapi32.dll")>]
     extern uint32 RegCloseKey(UIntPtr _hKey)
+#endif
 
     module Option = 
         /// Convert string into Option string where null and String.Empty result in None
@@ -77,13 +79,17 @@ module internal FSharpEnvironment =
     let KEY_QUERY_VALUE = 0x1
     let REG_SZ = 1u
 
-    let GetDefaultRegistryStringValueViaDotNet(subKey: string)  =
+    let GetDefaultRegistryStringValueViaDotNet(subKey: string) : string option =
+#if NO_WINDOWS
+        None
+#else
         Option.ofString
             (try
                 downcast Microsoft.Win32.Registry.GetValue("HKEY_LOCAL_MACHINE\\"+subKey,null,null)
              with e->
                 System.Diagnostics.Debug.Assert(false, sprintf "Failed in GetDefaultRegistryStringValueViaDotNet: %s" (e.ToString()))
                 null)
+#endif
 
 // RegistryView.Registry API is not available before .NET 4.0
 #if FX_ATLEAST_40_COMPILER_LOCATION
