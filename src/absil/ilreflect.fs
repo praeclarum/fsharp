@@ -28,10 +28,14 @@ open IKVM
 open IKVM.Reflection
 open IKVM.Reflection.Emit
 type ReflectionType = IKVM.Reflection.Type
+type ReflectionParameterAttributes = IKVM.Reflection.ParameterAttributes
+type ReflectionResolveEventHandler = IKVM.Reflection.ResolveEventHandler
 #else
 open System.Reflection
 open System.Reflection.Emit
 type ReflectionType = System.Type
+type ReflectionParameterAttributes = System.Reflection.ParameterAttributes
+type ReflectionResolveEventHandler = System.Reflection.ResolveEventHandler
 #endif
 
 let codeLabelOrder = ComparisonIdentity.Structural<ILCodeLabel>
@@ -87,10 +91,12 @@ type Reflection.Emit.ModuleBuilder with
         if logRefEmitCalls then printfn "moduleBuilder%d.GetArrayMethod(%A,%A,%A,%A,%A)" (abs <| hash modB) aty nm flags rty tys
         modB.GetArrayMethod(aty,nm,flags,rty,tys)
 
+#if !NO_PDB_WRITER
     member modB.DefineDocumentAndLog(file,lang,vendor,doctype) =
         let symDoc = modB.DefineDocument(file,lang,vendor,doctype)
         if logRefEmitCalls then printfn "let docWriter%d = moduleBuilder%d.DefineDocument(%A,System.Guid(\"%A\"),System.Guid(\"%A\"),System.Guid(\"%A\"))" (abs <| hash symDoc)  (abs <| hash modB) file lang vendor doctype
         symDoc
+#endif
 
     member modB.GetTypeAndLog(nameInModule,flag1,flag2) =
         if logRefEmitCalls then printfn "moduleBuilder%d.GetType(%A,%A,%A) |> ignore" (abs <| hash modB) nameInModule flag1 flag2
@@ -201,9 +207,11 @@ type Reflection.Emit.TypeBuilder with
         if logRefEmitCalls then printfn "typeBuilder%d.AddInterfaceImplementation(%A)" (abs <| hash typB) ty
         typB.AddInterfaceImplementation(ty)
 
+#if !IKVM_REFLECTION
     member typB.InvokeMemberAndLog(nm,flags,args)        = 
         if logRefEmitCalls then printfn "typeBuilder%d.InvokeMember(\"%s\",enum %d,null,null,%A,Globalization.CultureInfo.InvariantCulture)" (abs <| hash typB) nm (LanguagePrimitives.EnumToValue flags) args     
         typB.InvokeMember(nm,flags,null,null,args,Globalization.CultureInfo.InvariantCulture)
+#endif
 
     member typB.SetCustomAttributeAndLog(cinfo,bytes)        = 
         if logRefEmitCalls then printfn "typeBuilder%d.SetCustomAttribute(%A, %A)" (abs <| hash typB) cinfo bytes
@@ -222,9 +230,11 @@ type Reflection.Emit.ILGenerator with
         if logRefEmitCalls then printfn "ilg%d.MarkLabel(label%d_%d)" (abs <| hash ilG) (abs <| hash ilG) (abs <| hash lab)
         ilG.MarkLabel(lab)
 
+#if !NO_PDB_WRITER
     member ilG.MarkSequencePointAndLog(symDoc, l1, c1, l2, c2) = 
         if logRefEmitCalls then printfn "ilg%d.MarkSequencePoint(docWriter%d, %A, %A, %A, %A)" (abs <| hash ilG) (abs <| hash symDoc) l1 c1 l2 c2
         ilG.MarkSequencePoint(symDoc, l1, c1, l2, c2)
+#endif
 
     member ilG.BeginExceptionBlockAndLog() = 
         if logRefEmitCalls then printfn "ilg%d.BeginExceptionBlock()" (abs <| hash ilG) 
@@ -861,7 +871,7 @@ let emitInstrCall cenv emEnv (ilG:ILGenerator) opCall tail (mspec:ILMethodSpec) 
             | None         -> ilG.EmitAndLog(opCall,minfo)
             | Some vartyps -> ilG.EmitCall (opCall,minfo,convTypesToArray cenv emEnv vartyps)
     )
-
+#if !IKVM_REFLECTION
 let getGenericMethodDefinition q (ty:ReflectionType) = 
     let gminfo = 
         match q with 
@@ -882,7 +892,7 @@ let setArrayMethInfo n ty =
     | 3 -> getGenericMethodDefinition <@@ LanguagePrimitives.IntrinsicFunctions.SetArray3D<int> null 0 0 0 0 @@> ty
     | 4 -> getGenericMethodDefinition <@@ LanguagePrimitives.IntrinsicFunctions.SetArray4D<int> null 0 0 0 0 0 @@> ty
     | _ -> invalidArg "n"  "not expecting array dimension > 4"
-
+#endif
 
 //----------------------------------------------------------------------------
 // emitInstr cenv
@@ -1126,10 +1136,12 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
             let aty = convType cenv emEnv  (ILType.Array(shape,typ)) 
             let ety = aty.GetElementType()
             let meth = 
+#if !IKVM_REFLECTION
                 // See bug 6254: Mono has a bug in reflection-emit dynamic calls to the "Get", "Address" or "Set" methods on arrays
                 if runningOnMono then 
                     getArrayMethInfo shape.Rank ety
                 else
+#endif
                     modB.GetArrayMethodAndLog(aty,"Get",Reflection.CallingConventions.HasThis,ety,Array.create shape.Rank (intType) )
             ilG.EmitAndLog(OpCodes.Call,meth)
 
@@ -1139,11 +1151,13 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
             let aty = convType cenv emEnv  (ILType.Array(shape,typ)) 
             let ety = aty.GetElementType()
             let meth = 
+#if !IKVM_REFLECTION
                 // See bug 6254: Mono has a bug in reflection-emit dynamic calls to the "Get", "Address" or "Set" methods on arrays
                 if runningOnMono then 
                     setArrayMethInfo shape.Rank ety
                 else
-                    modB.GetArrayMethodAndLog(aty,"Set",Reflection.CallingConventions.HasThis,(null:Type),Array.append (Array.create shape.Rank (intType)) (Array.ofList [ ety ])) 
+#endif
+                    modB.GetArrayMethodAndLog(aty,"Set",Reflection.CallingConventions.HasThis,(null:ReflectionType),Array.append (Array.create shape.Rank (intType)) (Array.ofList [ ety ])) 
             ilG.EmitAndLog(OpCodes.Call,meth)
 
     | I_newarr (shape,typ)         -> 
@@ -1151,7 +1165,7 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
         then ilG.EmitAndLog(OpCodes.Newarr,convType cenv emEnv  typ)
         else 
             let aty = convType cenv emEnv  (ILType.Array(shape,typ)) 
-            let meth = modB.GetArrayMethodAndLog(aty,".ctor",Reflection.CallingConventions.HasThis,(null:Type),Array.create shape.Rank (intType))
+            let meth = modB.GetArrayMethodAndLog(aty,".ctor",Reflection.CallingConventions.HasThis,(null:ReflectionType),Array.create shape.Rank (intType))
             ilG.EmitAndLog(OpCodes.Newobj,meth)
     | I_ldlen                      -> ilG.EmitAndLog(OpCodes.Ldlen)
     | I_mkrefany   typ             -> ilG.EmitAndLog(OpCodes.Mkrefany,convType cenv emEnv  typ)
@@ -1160,10 +1174,14 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
     | I_rethrow                    -> ilG.EmitAndLog(OpCodes.Rethrow)
     | I_break                      -> ilG.EmitAndLog(OpCodes.Break)
     | I_seqpoint src               -> 
+#if NO_PDB_WRITER
+        ()
+#else
         if cenv.generatePdb && not (src.Document.File.EndsWith("stdin",StringComparison.Ordinal)) then
             let guid x = match x with None -> Guid.Empty | Some g -> Guid(g:byte[]) in
             let symDoc = modB.DefineDocumentAndLog(src.Document.File, guid src.Document.Language, guid src.Document.Vendor, guid src.Document.DocumentType)
             ilG.MarkSequencePointAndLog(symDoc, src.Line, src.Column, src.EndLine, src.EndColumn)
+#endif
     | I_arglist                    -> ilG.EmitAndLog(OpCodes.Arglist)
     | I_localloc                   -> ilG.EmitAndLog(OpCodes.Localloc)
     | I_cpblk (align,vol)          -> emitInstrAlign ilG align;
@@ -1516,7 +1534,7 @@ let rec buildMethodPass3 cenv tref modB (typB:TypeBuilder) emEnv (mdef : ILMetho
           match mdef.Return.CustomAttrs.AsList with
           | [] -> ()
           | _ ->
-              let retB = methB.DefineParameterAndLog(0,System.Reflection.ParameterAttributes.Retval,null) 
+              let retB = methB.DefineParameterAndLog(0,ReflectionParameterAttributes.Retval,null) 
               emitCustomAttrs cenv emEnv (wrapCustomAttr retB.SetCustomAttribute) mdef.Return.CustomAttrs
 
           // Value parameters
@@ -1883,7 +1901,7 @@ let createTypeRef (visited : Dictionary<_,_>, created : Dictionary<_,_>) emEnv t
             if verbose2 then dprintf "- traversing type %s\n" typB.FullName;        
             let typeCreationHandler =
                 let nestingToProbe = tref.Enclosing 
-                ResolveEventHandler(
+                ReflectionResolveEventHandler(
                     fun o r ->
                         let typeName = r.Name
                         let typeRef = ILTypeRef.Create(ILScopeRef.Local, nestingToProbe, typeName)
@@ -1894,11 +1912,15 @@ let createTypeRef (visited : Dictionary<_,_>, created : Dictionary<_,_>) emEnv t
                                 tb.Assembly
                         |   None -> null
                 )
+#if IKVM_REFLECTION
+            traverseTypeDef priority tref tdef;
+#else
             System.AppDomain.CurrentDomain.add_TypeResolve typeCreationHandler
             try
                 traverseTypeDef priority tref tdef;
             finally
                System.AppDomain.CurrentDomain.remove_TypeResolve typeCreationHandler           
+#endif
             if not (created.ContainsKey(tref)) then 
                 created.[tref] <- true;   
                 if verbose2 then dprintf "- creating type %s\n" typB.FullName;
