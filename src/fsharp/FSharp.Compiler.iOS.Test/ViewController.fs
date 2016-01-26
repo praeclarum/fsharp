@@ -1,0 +1,39 @@
+﻿namespace FSharp.Compiler.iOS.Test
+
+open System
+open System.Drawing
+
+open Foundation
+open UIKit
+
+
+[<Register ("ViewController")>]
+type ViewController (handle:IntPtr) =
+    inherit UIViewController (handle)
+
+    override x.DidReceiveMemoryWarning () =
+        // Releases the view if it doesn't have a superview.
+        base.DidReceiveMemoryWarning ()
+        // Release any cached data, images, etc that aren't in use.
+
+    override x.ViewDidLoad () =
+        base.ViewDidLoad ()
+
+        System.Threading.ThreadPool.QueueUserWorkItem (fun _ ->
+            try
+                let compiler = new Microsoft.FSharp.Compiler.Driver.InProcCompiler ()
+                let exitCode, output = compiler.Compile [||]
+                Console.WriteLine (output)
+            with ex ->
+                Console.WriteLine (ex)
+            ) |> ignore
+
+        // Perform any additional setup after loading the view, typically from a nib.
+
+    override x.ShouldAutorotateToInterfaceOrientation (toInterfaceOrientation) =
+        // Return true for supported orientations
+        if UIDevice.CurrentDevice.UserInterfaceIdiom = UIUserInterfaceIdiom.Phone then
+           toInterfaceOrientation <> UIInterfaceOrientation.PortraitUpsideDown
+        else
+           true
+
