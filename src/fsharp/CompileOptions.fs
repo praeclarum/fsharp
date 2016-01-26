@@ -1253,7 +1253,7 @@ let GetGeneratedILModuleName (t:CompilerTarget) (s:string) =
 let ignoreFailureOnMono1_1_16 f = try f() with _ -> ()
 
 #if NO_CONSOLE_COLORS
-let DoWithErrorColor isWarn f = f ()
+let DoWithErrorColor (isWarn : bool) (f : unit -> 'a) = f ()
 #else
 let DoWithErrorColor isWarn f =
     if not enableConsoleColoring then

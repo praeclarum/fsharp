@@ -363,10 +363,13 @@ let convTypeRefAux (cenv:cenv) (tref:ILTypeRef) : ReflectionType =
         let typT = assembly.GetType(qualifiedName, throwOnError=true)
         typT |> nonNull "convTypeRefAux" 
     | ILScopeRef.Module _ 
-    | ILScopeRef.Local _ ->
+    | ILScopeRef.Local ->
+#if IKVM_REFLECTION
+        failwithf "convTypeRefAux: Don't know how to GetType(\"%s\")" qualifiedName
+#else
         let typT = Type.GetType(qualifiedName, throwOnError=true) 
         typT |> nonNull "convTypeRefAux" 
-
+#endif
 
 
 /// The (local) emitter env (state). Some of these fields are effectively global accumulators
@@ -528,7 +531,12 @@ let rec convTypeSpec cenv emEnv preferCreated (tspec:ILTypeSpec) =
       
 and convTypeAux cenv emEnv preferCreated typ =
     match typ with
-    | ILType.Void               -> Type.GetType("System.Void",true)
+    | ILType.Void               ->
+#if IKVM_REFLECTION
+        cenv.universe.GetBuiltInType("System", "Void")
+#else
+        Type.GetType("System.Void",true)
+#endif
     | ILType.Array (shape,eltType) -> 
         let baseT = convTypeAux cenv emEnv preferCreated eltType |> nonNull "convType: array base"
         let nDims = shape.Rank
@@ -613,20 +621,26 @@ let convFieldInit x =
 // Some types require hard work...
 //----------------------------------------------------------------------------
 
+#if IKVM_REFLECTION
+let typeIsNotQueryable (typ : Type) =
+    (typ :? TypeBuilder)
+#else
 // This is gross. TypeBuilderInstantiation should really be a public type, since we
 // have to use alternative means for various Method/Field/Constructor lookups.  However since 
 // it isn't we resort to this technique...
 let TypeBuilderInstantiationT = 
     let ty = 
+        System.Type.GetType("System.Reflection.MonoGenericClass")
         if runningOnMono then 
-            Type.GetType("System.Reflection.MonoGenericClass")
+            System.Type.GetType("System.Reflection.MonoGenericClass")
         else
-            Type.GetType("Reflection.Emit.TypeBuilderInstantiation")
+            System.Type.GetType("Reflection.Emit.TypeBuilderInstantiation")
     assert (not (isNull ty))
     ty
 
 let typeIsNotQueryable (typ : Type) =
     (typ :? TypeBuilder) || ((typ.GetType()).Equals(TypeBuilderInstantiationT))
+#endif
 
 //----------------------------------------------------------------------------
 // convFieldSpec
@@ -1128,6 +1142,11 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
             let aty = convType cenv emEnv  (ILType.Array(shape,typ)) 
             let ety = aty.GetElementType()
             let rty = ety.MakeByRefType() 
+#if IKVM_REFLECTION
+            let intType = cenv.universe.GetBuiltInType ("System", "Int32")
+#else
+            let intType = typeof<int>
+#endif
             let meth = modB.GetArrayMethodAndLog(aty,"Address",Reflection.CallingConventions.HasThis,rty,Array.create shape.Rank (intType) )
             ilG.EmitAndLog(OpCodes.Call,meth)
     | I_ldelem_any (shape,typ)     -> 
@@ -1141,6 +1160,11 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
                 if runningOnMono then 
                     getArrayMethInfo shape.Rank ety
                 else
+#endif
+#if IKVM_REFLECTION
+                    let intType = cenv.universe.GetBuiltInType ("System", "Int32")
+#else
+                    let intType = typeof<int>
 #endif
                     modB.GetArrayMethodAndLog(aty,"Get",Reflection.CallingConventions.HasThis,ety,Array.create shape.Rank (intType) )
             ilG.EmitAndLog(OpCodes.Call,meth)
@@ -1157,6 +1181,11 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
                     setArrayMethInfo shape.Rank ety
                 else
 #endif
+#if IKVM_REFLECTION
+                    let intType = cenv.universe.GetBuiltInType ("System", "Int32")
+#else
+                    let intType = typeof<int>
+#endif
                     modB.GetArrayMethodAndLog(aty,"Set",Reflection.CallingConventions.HasThis,(null:ReflectionType),Array.append (Array.create shape.Rank (intType)) (Array.ofList [ ety ])) 
             ilG.EmitAndLog(OpCodes.Call,meth)
 
@@ -1165,6 +1194,11 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
         then ilG.EmitAndLog(OpCodes.Newarr,convType cenv emEnv  typ)
         else 
             let aty = convType cenv emEnv  (ILType.Array(shape,typ)) 
+#if IKVM_REFLECTION
+            let intType = cenv.universe.GetBuiltInType ("System", "Int32")
+#else
+            let intType = typeof<int>
+#endif
             let meth = modB.GetArrayMethodAndLog(aty,".ctor",Reflection.CallingConventions.HasThis,(null:ReflectionType),Array.create shape.Rank (intType))
             ilG.EmitAndLog(OpCodes.Newobj,meth)
     | I_ldlen                      -> ilG.EmitAndLog(OpCodes.Ldlen)
