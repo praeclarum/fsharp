@@ -1056,12 +1056,16 @@ module MainModuleBuilder =
                          let file = tcConfig.ResolveSourceFile(rangeStartup,file,tcConfig.implicitIncludeDir)
                          let outfile = (file |> Filename.chopExtension) + ".resources"
                          
-                         let readResX(f:string) = 
+                         let readResX(f:string) : (string * obj) list = 
+                             #if __IOS__
+                             failwith "System.Resources.ResXResourceReader is not available"
+                             #else
                              use rsxr = new System.Resources.ResXResourceReader(f)
                              rsxr 
                              |> Seq.cast 
                              |> Seq.toList
                              |> List.map (fun (d:System.Collections.DictionaryEntry) -> (d.Key :?> string), d.Value)
+                             #endif
                          let writeResources((r:(string * obj) list),(f:string)) = 
                              use writer = new System.Resources.ResourceWriter(f)
                              r |> List.iter (fun (k,v) -> writer.AddResource(k,v))
@@ -1684,7 +1688,7 @@ module StaticLinker =
 
 type SigningInfo = SigningInfo of (* delaysign:*) bool * (*signer:*)  string option * (*container:*) string option
 
-let GetSigner(signingInfo) : ILBinaryWriter.ILStrongNameSigner option = 
+let GetSigner(signingInfo : SigningInfo) : ILBinaryWriter.ILStrongNameSigner option = 
 #if NO_STRONG_NAMES
         None
 #else
