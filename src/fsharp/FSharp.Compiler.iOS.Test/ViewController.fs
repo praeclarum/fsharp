@@ -21,6 +21,7 @@ type ViewController (handle:IntPtr) =
 
         System.Threading.ThreadPool.QueueUserWorkItem (fun _ ->
             try
+                let libDir = IO.Path.GetDirectoryName (typeof<ViewController>).Assembly.Location
                 let compiler = new Microsoft.FSharp.Compiler.Driver.InProcCompiler ()
                 let exitCode, output = compiler.Compile [| "fsc"; "foo.fs" |]
                 for e in output.Errors do

@@ -441,6 +441,7 @@
     <Reference Include="IKVM.Reflection.iOS">
       <HintPath>..\..\..\dependencies\mono\4.5\XamariniOS\IKVM.Reflection.iOS.dll</HintPath>
     </Reference>
+    <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Resources\" />

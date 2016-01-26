@@ -1566,11 +1566,12 @@ let GetFsiLibraryName () = "FSharp.Compiler.Interactive.Settings"
 let DefaultBasicReferencesForOutOfProjectSources = 
     [ yield "System"
       yield "System.Xml" 
+#if !__IOS__
       yield "System.Runtime.Remoting"
       yield "System.Runtime.Serialization.Formatters.Soap"
       yield "System.Data"
       yield "System.Drawing"
-      
+#endif
       // Don't reference System.Core for .NET 2.0 compilations.
       //
       // We only use a default reference to System.Core if one exists which we can load it into the compiler process.
@@ -1589,9 +1590,12 @@ let DefaultBasicReferencesForOutOfProjectSources =
 #else
       yield "System.Runtime"
 #endif
+#if !__IOS__
       yield "System.Web"
       yield "System.Web.Services"
-      yield "System.Windows.Forms" ]
+      yield "System.Windows.Forms"
+#endif
+      ]
 
 // Extra implicit references for .NET 4.0
 let DefaultBasicReferencesForOutOfProjectSources40 = 
@@ -2432,6 +2436,9 @@ type TcConfig private (data : TcConfigBuilder,validate:bool) =
 
     // Check that the referenced version of FSharp.Core.dll matches the referenced version of mscorlib.dll 
     let checkFSharpBinaryCompatWithMscorlib filename (ilAssemblyRefs: ILAssemblyRef list) explicitFscoreVersionToCheckOpt m = 
+        #if __IOS__
+        ()
+        #else
         let isfslib = fileNameOfPath filename = GetFSharpCoreLibraryName() + ".dll"
         match ilAssemblyRefs |> List.tryFind (fun aref -> aref.Name = data.primaryAssembly.Name) with 
         | Some aref ->
@@ -2457,6 +2464,7 @@ type TcConfig private (data : TcConfigBuilder,validate:bool) =
                     ()
             | _ -> ()
         | _ -> ()
+        #endif
 
     // Look for an explicit reference to FSharp.Core and use that to compute fsharpBinariesDir
     let fsharpBinariesDirValue = 

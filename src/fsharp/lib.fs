@@ -11,8 +11,8 @@ open Microsoft.FSharp.Compiler.AbstractIL.Internal.Library
 
 
 /// is this the developer-debug build? 
-let debug = false 
-let verbose = false
+let debug = true 
+let verbose = true
 let progress = ref false 
 let tracking = ref false // intended to be a general hook to control diagnostic output when tracking down bugs
 

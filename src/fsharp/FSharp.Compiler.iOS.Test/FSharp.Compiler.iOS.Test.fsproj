@@ -25,10 +25,11 @@
     <ConsolePause>false</ConsolePause>
     <CodesignKey>iPhone Developer</CodesignKey>
     <MtouchDebug>true</MtouchDebug>
-    <MtouchFastDev>true</MtouchFastDev>
     <MtouchProfiling>true</MtouchProfiling>
     <PlatformTarget>
     </PlatformTarget>
+    <MtouchNoSymbolStrip>true</MtouchNoSymbolStrip>
+    <MtouchFloat32>true</MtouchFloat32>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|iPhone' ">
     <DebugSymbols>false</DebugSymbols>
@@ -113,5 +114,13 @@
       <Project>{2655B68F-1C79-4127-92BF-7C618C26A7E3}</Project>
       <Name>FSharp.Compiler.iOS</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <BundleResource Include="..\..\..\..\..\..\..\Library\Frameworks\Xamarin.iOS.framework\Versions\9.4.0.0\lib\mono\2.1\FSharp.Core.optdata">
+      <Link>FSharp.Core.optdata</Link>
+    </BundleResource>
+    <BundleResource Include="..\..\..\..\..\..\..\Library\Frameworks\Xamarin.iOS.framework\Versions\9.4.0.0\lib\mono\2.1\FSharp.Core.sigdata">
+      <Link>FSharp.Core.sigdata</Link>
+    </BundleResource>
   </ItemGroup>
 </Project>

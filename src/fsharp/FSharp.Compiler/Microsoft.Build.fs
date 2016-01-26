@@ -37,7 +37,7 @@ type ITaskItem =
 
 type TaskItem (name) =
     let metadata = new Dictionary<string, string> ()
-    member val ItemSpec = "" with get,set
+    member val ItemSpec = name with get,set
     member this.SetMetadata (k, v) = metadata.[k] <- v
     member this.GetMetadata (k) = metadata.[k]
     interface ITaskItem with
@@ -100,6 +100,22 @@ module Defaults =
 type ResolveAssemblyReference () =
     inherit TaskExtension ()
 
+    let resolveAsm (asm : ITaskItem) : ITaskItem option =
+        try
+            let path = asm.ItemSpec
+            let fullName = asm.ItemSpec
+            let version = "3.14159"
+            let t = TaskItem (path)
+            t.SetMetadata ("ResolvedFrom", "{AssemblyFolders}")
+            t.SetMetadata ("FusionName", fullName)
+            t.SetMetadata ("Version", version)
+            t.SetMetadata ("Redist", "")
+            t.SetMetadata ("Baggage", asm.GetMetadata ("Baggage"))
+            Some (t :> ITaskItem)
+        with ex ->
+            System.Diagnostics.Debug.WriteLine (ex)
+            None
+
     member val BuildEngine : IBuildEngine = Defaults.engine with get,set
     member val TargetFrameworkDirectories:string[]=[||] with get,set
     member val TargetProcessorArchitecture="" with get,set
@@ -119,6 +135,9 @@ type ResolveAssemblyReference () =
     member val CopyLocalFiles : ITaskItem[] = [||] with get,set
     member val SuggestedRedirects : ITaskItem[] = [||] with get,set
 
-    override this.Execute () = false
+    override this.Execute () =
+        let r = this.Assemblies |> Array.choose resolveAsm
+        this.ResolvedFiles <- r
+        r.Length = this.Assemblies.Length
 
 
