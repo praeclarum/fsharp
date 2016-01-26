@@ -3261,7 +3261,7 @@ and
       TypeForwarders : CcuTypeForwarderTable }
 
 /// Represents a table of .NET CLI type forwarders for an assembly
-and CcuTypeForwarderTable = Map<string[] * string, Lazy<EntityRef>>
+and CcuTypeForwarderTable = Internal.Utilities.Collections.Tagged.Map<(string array * string), Lazy<EntityRef>, Microsoft.FSharp.Compiler.Import.ILAssemblyTypeForwarderComparer>
 
 and CcuReference =  string // ILAssemblyRef
 
