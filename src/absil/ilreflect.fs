@@ -23,7 +23,7 @@ open System
 open System.Runtime.InteropServices
 open System.Collections.Generic
 
-#if IKVM_REFLECTION_EMIT
+#if IKVM_REFLECTION
 open IKVM
 open IKVM.Reflection
 open IKVM.Reflection.Emit
@@ -48,7 +48,7 @@ let wrapCustomAttr setCustomAttr (cinfo, bytes) =
 
 let logRefEmitCalls = false
 
-#if IKVM_REFLECTION_EMIT
+#if IKVM_REFLECTION
 type IKVM.Reflection.Universe with 
 #else
 type System.AppDomain with 
@@ -327,6 +327,9 @@ let convAssemblyRef (aref:ILAssemblyRef) =
 type cenv = 
     { ilg: ILGlobals; 
       generatePdb: bool;
+#if IKVM_REFLECTION
+      universe: IKVM.Reflection.Universe;
+#endif
       resolvePath: (ILAssemblyRef -> Choice<string,Reflection.Assembly> option) }
 
 /// Convert an Abstract IL type reference to Reflection.Emit System.Type value
@@ -1128,7 +1131,7 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
                 if runningOnMono then 
                     getArrayMethInfo shape.Rank ety
                 else
-                    modB.GetArrayMethodAndLog(aty,"Get",Reflection.CallingConventions.HasThis,ety,Array.create shape.Rank (typeof<int>) )
+                    modB.GetArrayMethodAndLog(aty,"Get",Reflection.CallingConventions.HasThis,ety,Array.create shape.Rank (intType) )
             ilG.EmitAndLog(OpCodes.Call,meth)
 
     | I_stelem_any (shape,typ)     -> 
@@ -1141,7 +1144,7 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
                 if runningOnMono then 
                     setArrayMethInfo shape.Rank ety
                 else
-                    modB.GetArrayMethodAndLog(aty,"Set",Reflection.CallingConventions.HasThis,(null:Type),Array.append (Array.create shape.Rank (typeof<int>)) (Array.ofList [ ety ])) 
+                    modB.GetArrayMethodAndLog(aty,"Set",Reflection.CallingConventions.HasThis,(null:Type),Array.append (Array.create shape.Rank (intType)) (Array.ofList [ ety ])) 
             ilG.EmitAndLog(OpCodes.Call,meth)
 
     | I_newarr (shape,typ)         -> 
@@ -1149,7 +1152,7 @@ let rec emitInstr cenv (modB : ModuleBuilder) emEnv (ilG:ILGenerator) instr =
         then ilG.EmitAndLog(OpCodes.Newarr,convType cenv emEnv  typ)
         else 
             let aty = convType cenv emEnv  (ILType.Array(shape,typ)) 
-            let meth = modB.GetArrayMethodAndLog(aty,".ctor",Reflection.CallingConventions.HasThis,(null:Type),Array.create shape.Rank (typeof<int>))
+            let meth = modB.GetArrayMethodAndLog(aty,".ctor",Reflection.CallingConventions.HasThis,(null:Type),Array.create shape.Rank (intType))
             ilG.EmitAndLog(OpCodes.Newobj,meth)
     | I_ldlen                      -> ilG.EmitAndLog(OpCodes.Ldlen)
     | I_mkrefany   typ             -> ilG.EmitAndLog(OpCodes.Mkrefany,convType cenv emEnv  typ)
@@ -1963,6 +1966,8 @@ let buildModuleFragment cenv emEnv (asmB : AssemblyBuilder) (modB : ModuleBuilde
 // test hook
 //----------------------------------------------------------------------------
 
+#if !IKVM_REFLECTION
+
 let mkDynamicAssemblyAndModule (assemblyName, optimize, debugInfo) =
     let filename = assemblyName ^ ".dll"
     let currentDom  = System.AppDomain.CurrentDomain   
@@ -2000,7 +2005,7 @@ let emitModuleFragment (ilg, emEnv, asmB : AssemblyBuilder, modB : ModuleBuilder
     let emEnv,entryPts = envPopEntryPts emEnv
     let execs = List.map execEntryPtFun entryPts
     emEnv,execs
-
+#endif
 
 //----------------------------------------------------------------------------
 // lookup* allow conversion from AbsIL to their emitted representations
