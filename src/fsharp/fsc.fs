@@ -1684,7 +1684,10 @@ module StaticLinker =
 
 type SigningInfo = SigningInfo of (* delaysign:*) bool * (*signer:*)  string option * (*container:*) string option
 
-let GetSigner(signingInfo) = 
+let GetSigner(signingInfo) : ILBinaryWriter.ILStrongNameSigner option = 
+#if NO_STRONG_NAMES
+        None
+#else
         let (SigningInfo(delaysign,signer,container)) = signingInfo
         // REVIEW: favor the container over the key file - C# appears to do this
         if isSome container then
@@ -1701,7 +1704,7 @@ let GetSigner(signingInfo) =
                 with e -> 
                     // Note:: don't use errorR here since we really want to fail and not produce a binary
                     error(Error(FSComp.SR.fscKeyFileCouldNotBeOpened(s),rangeCmdArgs))
-
+#endif
 module FileWriter = 
     let EmitIL (tcConfig:TcConfig, ilGlobals, errorLogger:ErrorLogger, outfile, pdbfile, ilxMainModule, signingInfo:SigningInfo, exiter:Exiter) =
         try

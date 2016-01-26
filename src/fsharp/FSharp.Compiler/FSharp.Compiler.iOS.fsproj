@@ -422,6 +422,12 @@
     <Compile Include="InternalsVisibleTo.fs">
       <Link>InternalsVisibleTo.fs</Link>
     </Compile>
+    <Compile Include="..\fsc.fsi">
+      <Link>Driver\fsc.fsi</Link>
+    </Compile>
+    <Compile Include="..\fsc.fs">
+      <Link>Driver\fsc.fs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -439,12 +445,4 @@
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\iOS\Xamarin.iOS.FSharp.targets" />
   <ItemGroup />
-  <ItemGroup>
-    <None Include="..\fsc.fsi">
-      <Link>Driver\fsc.fsi</Link>
-    </None>
-    <None Include="..\fsc.fs">
-      <Link>Driver\fsc.fs</Link>
-    </None>
-  </ItemGroup>
 </Project>
