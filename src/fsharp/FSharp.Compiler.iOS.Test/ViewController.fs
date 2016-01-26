@@ -22,8 +22,13 @@ type ViewController (handle:IntPtr) =
         System.Threading.ThreadPool.QueueUserWorkItem (fun _ ->
             try
                 let compiler = new Microsoft.FSharp.Compiler.Driver.InProcCompiler ()
-                let exitCode, output = compiler.Compile [||]
-                Console.WriteLine (output)
+                let exitCode, output = compiler.Compile [| "fsc"; "foo.fs" |]
+                for e in output.Errors do
+                    match e with
+                    | Microsoft.FSharp.Compiler.CompileOps.ErrorOrWarning.Long (_, info) -> printfn "OUTPUT ERROR %A" info.Message
+                    | _ -> printfn "OUTPUT ERROR %O" e
+                for e in output.Warnings do
+                    printfn "OUTPUT WARNING %A" e
             with ex ->
                 Console.WriteLine (ex)
             ) |> ignore

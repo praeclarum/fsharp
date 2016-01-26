@@ -11,7 +11,7 @@ namespace Microsoft.FSharp.Compiler
     open System.Reflection 
     
     module internal SR =
-        let private resources = lazy (new System.Resources.ResourceManager("fsstrings", System.Reflection.Assembly.GetExecutingAssembly()))
+        let private resources = lazy (new System.Resources.ResourceManager("FSStrings", System.Reflection.Assembly.GetExecutingAssembly()))
 
         let GetString(name:string) =        
             let s = resources.Force().GetString(name, System.Globalization.CultureInfo.CurrentUICulture)
