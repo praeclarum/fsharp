@@ -346,7 +346,12 @@ module internal MSBuildResolver =
         // The properties TargetedRuntimeVersion and CopyLocalDependenciesWhenParentReferenceInGac 
         // are not available to the cross-platform compiler since they are Windows only (not defined in the Mono  
         // 4.0 XBuild support). So we only set them if available (to avoid a compile-time dependency). 
-        let runningOnMono = try System.Type.GetType("Mono.Runtime") <> null with e-> false         
+        let runningOnMono =
+            #if __IOS__
+            true
+            #else
+            try System.Type.GetType("Mono.Runtime") <> null with e-> false         
+            #endif
         if not runningOnMono then  
             typeof<ResolveAssemblyReference>.InvokeMember("TargetedRuntimeVersion",(BindingFlags.Instance ||| BindingFlags.SetProperty ||| BindingFlags.Public),null,rar,[| box targetedRuntimeVersionValue |])  |> ignore 
             typeof<ResolveAssemblyReference>.InvokeMember("CopyLocalDependenciesWhenParentReferenceInGac",(BindingFlags.Instance ||| BindingFlags.SetProperty ||| BindingFlags.Public),null,rar,[| box true |])  |> ignore 
