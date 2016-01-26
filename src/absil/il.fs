@@ -15,6 +15,18 @@ open Microsoft.FSharp.Compiler.AbstractIL.Internal.Library
 open Microsoft.FSharp.Compiler.AbstractIL.Diagnostics
 open System.Collections.Generic
 open System.Collections
+
+#if IKVM_REFLECTION
+type ReflectionAssembly = IKVM.Reflection.Assembly
+type ReflectionAssemblyName = IKVM.Reflection.AssemblyName
+type ReflectionAssemblyNameFlags = IKVM.Reflection.AssemblyNameFlags
+type ReflectionUniverse = IKVM.Reflection.Universe
+#else
+type ReflectionAssembly = System.Reflection.Assembly
+type ReflectionAssemblyName = System.Reflection.AssemblyName
+type ReflectionAssemblyNameFlags = System.Reflection.AssemblyNameFlags
+type ReflectionUniverse = System.Object
+#endif
  
 let logging = false 
 
@@ -459,7 +471,7 @@ type ILAssemblyRef(data)  =
               assemRefVersion=version;
               assemRefLocale=locale; }
               
-    static member FromAssemblyName (aname:System.Reflection.AssemblyName) =
+    static member FromAssemblyName (aname:ReflectionAssemblyName) =
         let locale = None
         //match aname.CultureInfo with 
         //   | null -> None 
@@ -478,7 +490,7 @@ type ILAssemblyRef(data)  =
            | null -> None
            | v -> Some (uint16 v.Major,uint16 v.Minor,uint16 v.Build,uint16 v.Revision)
            
-        let retargetable = aname.Flags = System.Reflection.AssemblyNameFlags.Retargetable
+        let retargetable = aname.Flags = ReflectionAssemblyNameFlags.Retargetable
 
         ILAssemblyRef.Create(aname.Name,None,publicKey,retargetable,version,locale)
  
@@ -4524,13 +4536,13 @@ let addFieldNeverAttrs ilg (fdef:ILFieldDef) = {fdef with CustomAttrs = add_neve
 
 
 // PermissionSet is a 'blob' having the following format:
-// • A byte containing a period (.).
-// • A compressed int32 containing the number of attributes encoded in the blob.
-// • An array of attributes each containing the following:
+// ”ßA byte containing a period (.).
+// ”ßA compressed int32 containing the number of attributes encoded in the blob.
+// ”ßAn array of attributes each containing the following:
 // o A String, which is the fully-qualified type name of the attribute. (Strings are encoded
 // as a compressed int to indicate the size followed by an array of UTF8 characters.)
 // o A set of properties, encoded as the named arguments to a custom attribute would be (as
-// in §23.3, beginning with NumNamed).
+// in ?.3, beginning with NumNamed).
 let mkPermissionSet (ilg: ILGlobals) (action,attributes: list<(ILTypeRef * (string * ILType * ILAttribElem) list)>) = 
     let bytes = 
         [| yield (byte '.');
@@ -4583,9 +4595,9 @@ type ILTypeSigParser(tstring : string) =
     // mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"
     //
     // Note that 
-    //   • Since we're only reading valid IL, we assume that the signature is properly formed
-    //   • For type parameters, if the type is non-local, it will be wrapped in brackets ([])
-    //   • Still needs testing with jagged arrays and byref parameters
+    //   ”ßSince we're only reading valid IL, we assume that the signature is properly formed
+    //   ”ßFor type parameters, if the type is non-local, it will be wrapped in brackets ([])
+    //   ”ßStill needs testing with jagged arrays and byref parameters
     member private x.ParseType() =
 
         // Does the type name start with a leading '['?  If so, ignore it
@@ -4644,7 +4656,7 @@ type ILTypeSigParser(tstring : string) =
                       yield grabScopeComponent() // culture
                       yield grabScopeComponent() // public key token
                     ] |> String.concat ","
-                ILScopeRef.Assembly(ILAssemblyRef.FromAssemblyName(System.Reflection.AssemblyName(scope)))        
+                ILScopeRef.Assembly(ILAssemblyRef.FromAssemblyName(ReflectionAssemblyName(scope)))        
             else
                 ILScopeRef.Local
 
@@ -4789,7 +4801,7 @@ let decodeILAttribData ilg (ca: ILAttribute) =
                     pieces.[0], None
             let scoref = 
                 match rest with 
-                | Some aname -> ILScopeRef.Assembly(ILAssemblyRef.FromAssemblyName(System.Reflection.AssemblyName(aname)))        
+                | Some aname -> ILScopeRef.Assembly(ILAssemblyRef.FromAssemblyName(ReflectionAssemblyName(aname)))        
                 | None -> ilg.traits.ScopeRef
 
             let tref = mkILTyRef (scoref,unqualified_tname)

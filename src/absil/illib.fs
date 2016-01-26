@@ -10,6 +10,18 @@ open System.Collections.Generic
 open Internal.Utilities
 open Internal.Utilities.Collections
 
+#if IKVM_REFLECTION
+type ReflectionAssembly = IKVM.Reflection.Assembly
+type ReflectionAssemblyName = IKVM.Reflection.AssemblyName
+type ReflectionAssemblyNameFlags = IKVM.Reflection.AssemblyNameFlags
+type ReflectionUniverse = IKVM.Reflection.Universe
+#else
+type ReflectionAssembly = System.Reflection.Assembly
+type ReflectionAssemblyName = System.Reflection.AssemblyName
+type ReflectionAssemblyNameFlags = System.Reflection.AssemblyNameFlags
+type ReflectionUniverse = System.Object
+#endif
+ 
 // Logical shift right treating int32 as unsigned integer.
 // Code that uses this should probably be adjusted to use unsigned integer types.
 let (>>>&) (x:int32) (n:int32) = int32 (uint32 x >>> n)
@@ -958,19 +970,27 @@ module Shim =
         abstract GetLastWriteTimeShim: fileName:string -> System.DateTime
         abstract SafeExists: fileName:string -> bool
         abstract FileDelete: fileName:string -> unit
-        abstract AssemblyLoadFrom: fileName:string -> System.Reflection.Assembly 
-        abstract AssemblyLoad: assemblyName:System.Reflection.AssemblyName -> System.Reflection.Assembly 
+        abstract AssemblyLoadFrom: fileName:string*universe:ReflectionUniverse -> ReflectionAssembly 
+        abstract AssemblyLoad: assemblyName:ReflectionAssemblyName*universe:ReflectionUniverse -> ReflectionAssembly 
 
     type DefaultFileSystem() =
         interface IFileSystem with
-            member __.AssemblyLoadFrom(fileName:string) = 
+#if IKVM_REFLECTION
+            member __.AssemblyLoadFrom(fileName:string, universe:ReflectionUniverse) = 
+                universe.LoadFile fileName
+            member __.AssemblyLoad(assemblyName:ReflectionAssemblyName, universe:ReflectionUniverse) =
+                let refname = assemblyName.FullName
+                universe.Load refname
+#else
+            member __.AssemblyLoadFrom(fileName:string, universe:ReflectionUniverse) = 
     #if FX_ATLEAST_40_COMPILER_LOCATION
-                System.Reflection.Assembly.UnsafeLoadFrom fileName
+                ReflectionAssembly.UnsafeLoadFrom fileName
     #else
-                System.Reflection.Assembly.LoadFrom fileName
+                ReflectionAssembly.LoadFrom fileName
     #endif
-            member __.AssemblyLoad(assemblyName:System.Reflection.AssemblyName) = System.Reflection.Assembly.Load assemblyName
-
+            member __.AssemblyLoad(assemblyName:ReflectionAssemblyName, universe:ReflectionUniverse) =
+                ReflectionAssembly.Load assemblyName
+#endif
             member __.ReadAllBytesShim (fileName:string) = File.ReadAllBytes fileName
             member __.FileStreamReadShim (fileName:string) = new FileStream(fileName,FileMode.Open,FileAccess.Read,FileShare.ReadWrite)  :> Stream
             member __.FileStreamCreateShim (fileName:string) = new FileStream(fileName,FileMode.Create,FileAccess.Write,FileShare.Read ,0x1000,false) :> Stream

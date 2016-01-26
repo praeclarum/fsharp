@@ -154,11 +154,15 @@ module internal ExtensionTyping =
                   | Some designTimeAssemblyName, Some path when String.Compare(designTimeAssemblyName.Name, Path.GetFileNameWithoutExtension path, StringComparison.OrdinalIgnoreCase) = 0 ->
                       ()
                   | Some _, _ ->
+#if IKVM_REFLECTION
+                      ()
+#else
                       for t in GetTypeProviderImplementationTypes (runTimeAssemblyFileName,designTimeAssemblyNameString,m) do
                         let resolver = CreateTypeProvider (t, runTimeAssemblyFileName, resolutionEnvironment, isInvalidationSupported, isInteractive, systemRuntimeContainsType, systemRuntimeAssemblyVersion, m)
                         match box resolver with 
                         | null -> ()
                         | _ -> yield (resolver,ilScopeRefOfRuntimeAssembly)
+#endif
                   |   None, _ -> 
                       () ]
 

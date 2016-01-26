@@ -308,8 +308,8 @@ let getTypeConstructor (ty: Type) =
 // convAssemblyRef
 //----------------------------------------------------------------------------
 
-let convAssemblyRef (aref:ILAssemblyRef) = 
-    let asmName = new System.Reflection.AssemblyName()
+let convAssemblyRef (aref:ILAssemblyRef) : ReflectionAssemblyName = 
+    let asmName = new ReflectionAssemblyName()
     asmName.Name    <- aref.Name;
     (match aref.PublicKey with 
      | None -> ()
@@ -327,31 +327,29 @@ let convAssemblyRef (aref:ILAssemblyRef) =
 type cenv = 
     { ilg: ILGlobals; 
       generatePdb: bool;
-#if IKVM_REFLECTION
-      universe: IKVM.Reflection.Universe;
-#endif
+      universe: ReflectionUniverse;
       resolvePath: (ILAssemblyRef -> Choice<string,Reflection.Assembly> option) }
 
-/// Convert an Abstract IL type reference to Reflection.Emit System.Type value
+/// Convert an Abstract IL type reference to ReflectionType value
 // REVIEW: This ought to be an adequate substitute for this whole function, but it needs 
 // to be thoroughly tested.
 //    Type.GetType(tref.QualifiedName) 
 // []              ,name -> name
 // [ns]            ,name -> ns+name
 // [ns;typeA;typeB],name -> ns+typeA+typeB+name
-let convTypeRefAux (cenv:cenv) (tref:ILTypeRef) = 
+let convTypeRefAux (cenv:cenv) (tref:ILTypeRef) : ReflectionType = 
     let qualifiedName = (String.concat "+" (tref.Enclosing @ [ tref.Name ])).Replace(",", @"\,")
     match tref.Scope with
     | ILScopeRef.Assembly asmref ->
         let assembly = 
             match cenv.resolvePath asmref with                     
             | Some (Choice1Of2 path) ->
-                FileSystem.AssemblyLoadFrom(path)              
+                FileSystem.AssemblyLoadFrom(path, cenv.universe)              
             | Some (Choice2Of2 assembly) ->
                 assembly
             | None ->
                 let asmName    = convAssemblyRef asmref
-                FileSystem.AssemblyLoad(asmName)
+                FileSystem.AssemblyLoad(asmName, cenv.universe)
         let typT = assembly.GetType(qualifiedName, throwOnError=true)
         typT |> nonNull "convTypeRefAux" 
     | ILScopeRef.Module _ 
@@ -411,11 +409,12 @@ let envUpdateCreatedTypeRef emEnv (tref:ILTypeRef) =
         // of objects. We use System.Runtime.Serialization.FormatterServices.GetUninitializedObject to do
         // the fake allocation - this creates an "empty" object, even if the object doesn't have 
         // a constructor. It is not usable in partial trust code.
+#if !IKVM_REFLECTION
         if runningOnMono && typ.IsClass && not typ.IsAbstract && not typ.IsGenericType && not typ.IsGenericTypeDefinition then 
             try 
               System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typ) |> ignore
             with e -> ()
-
+#endif
         {emEnv with emTypMap = Zmap.add tref (typT,typB,typeDef,Some typ) emEnv.emTypMap}
     else
 #if DEBUG
@@ -863,7 +862,7 @@ let emitInstrCall cenv emEnv (ilG:ILGenerator) opCall tail (mspec:ILMethodSpec) 
             | Some vartyps -> ilG.EmitCall (opCall,minfo,convTypesToArray cenv emEnv vartyps)
     )
 
-let getGenericMethodDefinition q (ty:Type) = 
+let getGenericMethodDefinition q (ty:ReflectionType) = 
     let gminfo = 
         match q with 
         | Quotations.Patterns.Call(_,minfo,_) -> minfo.GetGenericMethodDefinition()

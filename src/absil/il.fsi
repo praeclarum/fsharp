@@ -7,6 +7,19 @@ module internal Microsoft.FSharp.Compiler.AbstractIL.IL
 open Internal.Utilities
 open System.Collections.Generic
 
+#if IKVM_REFLECTION
+type ReflectionAssembly = IKVM.Reflection.Assembly
+type ReflectionAssemblyName = IKVM.Reflection.AssemblyName
+type ReflectionAssemblyNameFlags = IKVM.Reflection.AssemblyNameFlags
+type ReflectionUniverse = IKVM.Reflection.Universe
+#else
+type ReflectionAssembly = System.Reflection.Assembly
+type ReflectionAssemblyName = System.Reflection.AssemblyName
+type ReflectionAssemblyNameFlags = System.Reflection.AssemblyNameFlags
+type ReflectionUniverse = System.Object
+#endif
+
+
 /// The type used to store relatively small lists in the Abstract IL data structures, i.e. for ILTypes, ILGenericArgs, ILParameters and ILLocals.
 /// See comments in il.fs for why we've isolated this representation and the possible future choices we might use here.
 #if ABSIL_USES_ARRAY_FOR_ILLIST
@@ -125,7 +138,7 @@ type ILVersionInfo = uint16 * uint16 * uint16 * uint16
 [<Sealed>]
 type ILAssemblyRef =
     static member Create : name: string * hash: byte[] option * publicKey: PublicKey option * retargetable: bool * version: ILVersionInfo option * locale: string option -> ILAssemblyRef
-    static member FromAssemblyName : System.Reflection.AssemblyName -> ILAssemblyRef
+    static member FromAssemblyName : ReflectionAssemblyName -> ILAssemblyRef
     member Name: string;
     /// The fully qualified name of the assembly reference, e.g. mscorlib, Version=1.0.3705 etc.
     member QualifiedName: string; 
