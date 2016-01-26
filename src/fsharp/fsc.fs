@@ -1786,7 +1786,10 @@ type Args<'T> = Args  of 'T
 let main0(argv,bannerAlreadyPrinted,exiter:Exiter, errorLoggerProvider : ErrorLoggerProvider, disposables : DisposablesTracker) = 
 
     // See Bug 735819 
-    let lcidFromCodePage = 
+    let lcidFromCodePage : int option = 
+#if NO_CONSOLE_OUTPUT_ENCODING
+        None
+#else
         if (Console.OutputEncoding.CodePage <> 65001) &&
            (Console.OutputEncoding.CodePage <> Thread.CurrentThread.CurrentUICulture.TextInfo.OEMCodePage) &&
            (Console.OutputEncoding.CodePage <> Thread.CurrentThread.CurrentUICulture.TextInfo.ANSICodePage) then
@@ -1794,6 +1797,7 @@ let main0(argv,bannerAlreadyPrinted,exiter:Exiter, errorLoggerProvider : ErrorLo
                 Some(1033)
         else
             None
+#endif
 
     let tcGlobals,tcImports,frameworkTcImports,generatedCcu,typedAssembly,topAttrs,tcConfig,outfile,pdbfile,assemblyName,errorLogger = 
         GetTcImportsFromCommandLine
@@ -1804,11 +1808,13 @@ let main0(argv,bannerAlreadyPrinted,exiter:Exiter, errorLoggerProvider : ErrorLo
                     match tcConfigB.lcid with
                     | Some(n) -> Thread.CurrentThread.CurrentUICulture <- new CultureInfo(n)
                     | None -> ()
-          
+#if !NO_CONSOLE_OUTPUT_ENCODING
                     if tcConfigB.utf8output then 
                         let prev = Console.OutputEncoding
                         Console.OutputEncoding <- Encoding.UTF8
-                        System.AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> Console.OutputEncoding <- prev)), 
+                        System.AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> Console.OutputEncoding <- prev)
+#endif
+                        ), 
              (fun tcConfigB -> 
                     // display the banner text, if necessary
                     if not bannerAlreadyPrinted then 
