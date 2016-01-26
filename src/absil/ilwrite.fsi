@@ -10,10 +10,12 @@ open Microsoft.FSharp.Compiler.AbstractIL.IL
 [<Sealed>]
 type ILStrongNameSigner =
     member PublicKey: byte[]
+#if !NO_STRONG_NAMES
     static member OpenPublicKeyFile: string -> ILStrongNameSigner
     static member OpenPublicKey: byte[] -> ILStrongNameSigner
     static member OpenKeyPairFile: string -> ILStrongNameSigner
     static member OpenKeyContainer: string -> ILStrongNameSigner
+#endif
 
 type options =
     { ilg: ILGlobals

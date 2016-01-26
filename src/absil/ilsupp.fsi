@@ -7,13 +7,21 @@
 /// The implementation of the functions can be found in ilsupp-*.fs
 module internal Microsoft.FSharp.Compiler.AbstractIL.Internal.Support
 
+#if !NO_PDB_READER
 
 type PdbReader
-type PdbWriter
 val pdbReadClose: PdbReader -> unit
-val pdbInitialize : string -> string -> PdbWriter
-val absilWriteGetTimeStamp: unit -> int32
 
+#endif
+
+#if !NO_PDB_WRITER
+
+type PdbWriter
+val pdbInitialize : string -> string -> PdbWriter
+
+#endif
+
+val absilWriteGetTimeStamp: unit -> int32
 
 open System
 open System.Runtime.InteropServices
@@ -39,6 +47,8 @@ val linkNativeResources: unlinkedResources:byte[] list ->  rva:int32 -> PEFileTy
 val unlinkResource: int32 -> byte[] -> byte[]
 
 /// PDB reader and associated types
+#if !NO_PDB_READER
+
 type PdbDocument
 type PdbMethod
 type PdbVariable
@@ -77,10 +87,13 @@ val pdbVariableGetName: PdbVariable -> string
 val pdbVariableGetSignature: PdbVariable -> byte[]
 val pdbVariableGetAddressAttributes: PdbVariable -> int32 (* kind *) * int32 (* addrField1 *)
 
+#endif
 
 //---------------------------------------------------------------------
 // PDB writer.
 //---------------------------------------------------------------------
+
+#if !NO_PDB_WRITER
 
 type PdbDocumentWriter
 
@@ -108,9 +121,13 @@ val pdbSetMethodRange: PdbWriter -> PdbDocumentWriter -> int -> int -> PdbDocume
 val pdbDefineSequencePoints: PdbWriter -> PdbDocumentWriter -> (int * int * int * int * int) array -> unit
 val pdbGetDebugInfo: PdbWriter -> idd
 
+#endif
+
 //---------------------------------------------------------------------
 // Strong name signing
 //---------------------------------------------------------------------
+
+#if !NO_STRONG_NAMES
 
 type keyContainerName = string
 type keyPair = byte[]
@@ -124,3 +141,5 @@ val signerCloseKeyContainer: keyContainerName -> unit
 val signerSignatureSize: pubkey -> int 
 val signerSignFileWithKeyPair: string -> keyPair -> unit 
 val signerSignFileWithKeyContainer: string -> keyContainerName -> unit
+
+#endif

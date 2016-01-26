@@ -221,6 +221,8 @@ type PdbData =
 // imperative calls to the Symbol Writer API.
 //---------------------------------------------------------------------
 
+#if !NO_PDB_WRITER
+
 let WritePdbInfo fixupOverlappingSequencePoints showTimes f fpdb info = 
     (try FileSystem.FileDelete fpdb with _ -> ())
     let pdbw = ref Unchecked.defaultof<PdbWriter>
@@ -334,10 +336,14 @@ let WritePdbInfo fixupOverlappingSequencePoints showTimes f fpdb info =
     reportTime showTimes "PDB: Closed"
     res
 
+#endif
+
 //---------------------------------------------------------------------
 // Support functions for calling 'Mono.CompilerServices.SymbolWriter'
 // assembly dynamically if it is available to the compiler
 //---------------------------------------------------------------------
+
+#if !NO_MDB_WRITER
 
 open System.Reflection
 open Microsoft.FSharp.Reflection
@@ -475,11 +481,27 @@ let DumpDebugInfo (outfile:string) (info:PdbData) =
         for child in scope.Children do writeScope (offs + "  ") child
       writeScope "" meth.RootScope
       fprintfn sw ""
-    
+#endif
+
 //---------------------------------------------------------------------
 // Strong name signing
 //---------------------------------------------------------------------
 
+#if NO_STRONG_NAMES
+type ILStrongNameSigner =  
+    | PublicKeySigner of byte[]
+    | KeyPair of string
+    | KeyContainer of string
+    member s.IsFullySigned =
+        match s with 
+        | PublicKeySigner _ -> false
+        | KeyPair _ | KeyContainer _ -> true
+    member s.PublicKey = 
+        match s with 
+        | PublicKeySigner p -> p
+        | KeyPair kp -> [||]
+        | KeyContainer kn -> [||]
+#else
 type ILStrongNameSigner =  
     | PublicKeySigner of Support.pubkey
     | KeyPair of Support.keyPair
@@ -522,6 +544,7 @@ type ILStrongNameSigner =
         | KeyPair kp -> Support.signerSignFileWithKeyPair file kp
         | KeyContainer kn -> Support.signerSignFileWithKeyContainer file kn
 
+#endif
 
 //---------------------------------------------------------------------
 // TYPES FOR TABLES
@@ -1875,7 +1898,8 @@ type CodeBuffer =
       mutable reqdStringFixupsInMethod: (int * int) list 
       /// data for exception handling clauses 
       mutable seh: ExceptionClauseSpec list 
-      seqpoints: ResizeArray<PdbSequencePoint> }
+      seqpoints: ResizeArray<PdbSequencePoint>
+    }
 
     static member Create _nm = 
         { seh = []
@@ -1889,6 +1913,9 @@ type CodeBuffer =
     member codebuf.EmitExceptionClause seh = codebuf.seh <- seh :: codebuf.seh
 
     member codebuf.EmitSeqPoint cenv (m:ILSourceMarker)  = 
+#if NO_PDB_WRITER
+        ()
+#else
         if cenv.generatePdb then 
           // table indexes are 1-based, document array indexes are 0-based 
           let doc = (cenv.documents.FindOrAddSharedEntry m.Document) - 1  
@@ -1899,6 +1926,7 @@ type CodeBuffer =
               Column=m.Column
               EndLine=m.EndLine
               EndColumn=m.EndColumn }
+#endif
               
     member codebuf.EmitByte x = codebuf.code.EmitIntAsByte x
     member codebuf.EmitUInt16 x = codebuf.code.EmitUInt16 x
@@ -2916,6 +2944,7 @@ let GenMethodDefAsRow cenv env midx (md: ILMethodDef) =
           let (code, seqpoints, rootScope) = GenILMethodBody md.Name cenv env ilmbody
 
           // Now record the PDB record for this method - we write this out later. 
+#if !NO_PDB_WRITER
           if cenv.generatePdb then 
             cenv.pdbinfo.Add  
               { MethToken=getUncodedToken TableNames.Method midx
@@ -2936,7 +2965,8 @@ let GenMethodDefAsRow cenv env midx (md: ILMethodDef) =
                               Column=m.EndColumn })
                   | _ -> None
                 SequencePoints=seqpoints }
-         
+#endif
+
           cenv.AddCode code
           addr 
       | MethodBody.Native -> 
@@ -3882,6 +3912,7 @@ let writeBinaryAndReportMappings (outfile, ilg, pdbfile: string option, signer: 
     reportTime showTimes "Write Started";
     let isDll = modul.IsDLL
     
+#if !NO_STRONG_NAMES
     let signer = 
         match signer,modul.Manifest with
         | Some _, _ -> signer
@@ -3913,6 +3944,7 @@ let writeBinaryAndReportMappings (outfile, ilg, pdbfile: string option, signer: 
              dprintn "Warning: The output assembly is being signed or delay-signed with a strong name that is different to the original."
         end;
         { modul with Manifest = match modul.Manifest with None -> None | Some m -> Some {m with PublicKey = pubkey} }
+#endif
 
     let timestamp = absilWriteGetTimeStamp ()
 
@@ -4001,10 +4033,13 @@ let writeBinaryAndReportMappings (outfile, ilg, pdbfile: string option, signer: 
           let metadataChunk,next = chunk metadata.Length next
           
           let strongnameChunk,next = 
+#if NO_STRONG_NAMES
+            nochunk next
+#else
             match signer with 
             | None -> nochunk next
             | Some s -> chunk s.SignatureSize next
-
+#endif
           let resourcesChunk,next = chunk resources.Length next
          
           let rawdataChunk,next = chunk data.Length next
@@ -4480,6 +4515,8 @@ let writeBinaryAndReportMappings (outfile, ilg, pdbfile: string option, signer: 
    
 
     reportTime showTimes "Writing Image"
+
+#if !NO_PDB_WRITER
      
     if dumpDebugInfo then 
         DumpDebugInfo outfile pdbData
@@ -4531,8 +4568,10 @@ let writeBinaryAndReportMappings (outfile, ilg, pdbfile: string option, signer: 
             
     end
     reportTime showTimes "Finalize PDB"
+#endif
 
     /// Sign the binary.  No further changes to binary allowed past this point! 
+#if !NO_STRONG_NAMES
     match signer with 
     | None -> ()
     | Some s -> 
@@ -4544,6 +4583,7 @@ let writeBinaryAndReportMappings (outfile, ilg, pdbfile: string option, signer: 
             (try s.Close() with _ -> ())
             (try FileSystem.FileDelete outfile with _ -> ()) 
             ()
+#endif
 
     reportTime showTimes "Signing Image"
     //Finished writing and signing the binary and debug info...
