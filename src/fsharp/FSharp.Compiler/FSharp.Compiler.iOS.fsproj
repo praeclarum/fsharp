@@ -14,15 +14,17 @@
   <!-- MonoDevelop likes these here to recognise the configurations -->
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <OutputPath>bin\Debug</OutputPath>
-    <Optimize>false</Optimize>
+    <Optimize>true</Optimize>
     <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
     <DefineConstants>DEBUG;IKVM_REFLECTION;NO_CONSOLE_OUTPUT_ENCODING;NO_CONSOLE_COLORS;NO_WINDOWS;NO_PDB_WRITER;NO_MDB_WRITER;NO_PDB_READER;NO_STRONG_NAMES;CROSS_PLATFORM_COMPILER;COMPILER;INCLUDE_METADATA_READER;INCLUDE_METADATA_WRITER;EXTENSIBLE_DUMPER;$(DefineConstants)</DefineConstants>
     <OtherFlags>--nowarn:62</OtherFlags>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release</OutputPath>
     <Optimize>true</Optimize>
-    <DebugSymbols>false</DebugSymbols>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
     <DefineConstants>DEBUG;IKVM_REFLECTION;NO_CONSOLE_OUTPUT_ENCODING;NO_CONSOLE_COLORS;NO_WINDOWS;NO_PDB_WRITER;NO_MDB_WRITER;NO_PDB_READER;NO_STRONG_NAMES;CROSS_PLATFORM_COMPILER;COMPILER;INCLUDE_METADATA_READER;INCLUDE_METADATA_WRITER;EXTENSIBLE_DUMPER;$(DefineConstants)</DefineConstants>
     <OtherFlags>--nowarn:62</OtherFlags>
   </PropertyGroup>
