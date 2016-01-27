@@ -4069,7 +4069,9 @@ type TcImports(tcConfigP:TcConfigProvider, initialResolutions:TcAssemblyResoluti
 #endif
                                               UsesFSharp20PlusQuotations = minfo.usesQuotations
                                               MemberSignatureEquality= (fun ty1 ty2 -> Tastops.typeEquivAux EraseAll (tcImports.GetTcGlobals()) ty1 ty2)
-                                              TypeForwarders = match ilModule.Manifest with | Some manifest -> ImportILAssemblyTypeForwarders(tcImports.GetImportMap,m,manifest.ExportedTypes) | None -> Map.empty })
+                                              TypeForwarders = match ilModule.Manifest with
+                                                               | Some manifest -> ImportILAssemblyTypeForwarders(tcImports.GetImportMap,m,manifest.ExportedTypes)
+                                                               | None -> Internal.Utilities.Collections.Tagged.Map<(string[]*string),_,_>.Empty (new ILAssemblyTypeForwarderComparer ()) })
 
                 let optdata = 
                     lazy 
@@ -4937,7 +4939,7 @@ let GetInitialTcState(m,ccuName,tcConfig:TcConfig,tcGlobals,tcImports:TcImports,
                                ILScopeRef=ILScopeRef.Local
                                Contents=ccuType
                                MemberSignatureEquality= (Tastops.typeEquivAux EraseAll tcGlobals)
-                               TypeForwarders=Map.empty })
+                               TypeForwarders=Internal.Utilities.Collections.Tagged.Map<(string[]*string),_,_>.Empty (new ILAssemblyTypeForwarderComparer ()) })
 
     // OK, is this is the FSharp.Core CCU then fix it up. 
     if tcConfig.compilingFslib then 

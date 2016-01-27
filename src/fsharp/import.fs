@@ -515,14 +515,6 @@ let ImportILAssemblyTypeDefs (amap, m, auxModLoader, aref, mainmod:ILModuleDef) 
     let mainmod = ImportILAssemblyMainTypeDefs amap m scoref mainmod
     CombineCcuContentFragments m (mainmod :: mtypsForExportedTypes)
 
-type ILAssemblyTypeForwarderComparer () =
-    interface System.Collections.Generic.IComparer<string[]*string> with
-        member this.Compare (x, y) =
-            if x = y then 0
-            else if x < y then -1
-            else 1
-
-
 /// Import the type forwarder table for an IL assembly
 let ImportILAssemblyTypeForwarders (amap, m, exportedTypes:ILExportedTypesAndForwarders) = 
     // Note 'td' may be in another module or another assembly!
@@ -573,7 +565,7 @@ let ImportILAssembly(amap:(unit -> ImportMap),m,auxModuleLoader,sref,sourceDir,f
             MemberSignatureEquality= (fun ty1 ty2 -> Tastops.typeEquivAux EraseAll (amap()).g ty1 ty2)
             TypeForwarders = 
                (match ilModule.Manifest with 
-                | None -> Map.empty
+                | None -> Internal.Utilities.Collections.Tagged.Map<(string[]*string),_,_>.Empty (new ILAssemblyTypeForwarderComparer ())
                 | Some manifest -> ImportILAssemblyTypeForwarders(amap,m,manifest.ExportedTypes)) }
                 
         CcuThunk.Create(nm,ccuData)

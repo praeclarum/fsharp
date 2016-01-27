@@ -80,11 +80,7 @@ val internal ImportILGenericParameters : (unit -> ImportMap) -> range -> ILScope
 /// Import an IL assembly as a new TAST CCU
 val internal ImportILAssembly : (unit -> ImportMap) * range * (ILScopeRef -> ILModuleDef) * ILScopeRef * sourceDir:string * filename: string option * ILModuleDef * IEvent<string> -> CcuThunk
 
-val internal ImportILAssemblyTypeForwarders : (unit -> ImportMap) * range * ILExportedTypesAndForwarders -> Internal.Utilities.Collections.Tagged.Map<(string array * string), Lazy<EntityRef>>
-
-[<Class>]
-type ILAssemblyTypeForwarderComparer =
-    interface System.Collections.Generic.IComparer<string[]*string>
+val internal ImportILAssemblyTypeForwarders : (unit -> ImportMap) * range * ILExportedTypesAndForwarders -> Internal.Utilities.Collections.Tagged.Map<(string array * string), Lazy<EntityRef>, ILAssemblyTypeForwarderComparer>
 
 /// Import the type forwarder table for an IL assembly
 val internal ImportILAssemblyTypeForwarders : (unit -> ImportMap) * range * ILExportedTypesAndForwarders -> Internal.Utilities.Collections.Tagged.Map<(string array * string), Lazy<EntityRef>, ILAssemblyTypeForwarderComparer>
