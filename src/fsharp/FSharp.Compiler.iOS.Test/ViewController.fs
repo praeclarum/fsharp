@@ -21,15 +21,25 @@ type ViewController (handle:IntPtr) =
 
         System.Threading.ThreadPool.QueueUserWorkItem (fun _ ->
             try
-                let libDir = IO.Path.GetDirectoryName (typeof<ViewController>).Assembly.Location
+                let sw = new Diagnostics.Stopwatch ()
+                sw.Start ()
+                let docs = Environment.GetFolderPath (Environment.SpecialFolder.MyDocuments)
+                let codePath = IO.Path.Combine (docs, "foo.fs")
+                let outPath = IO.Path.ChangeExtension(codePath, ".exe")
+                IO.File.WriteAllText (codePath, "module Foo\nlet x = 42\nprintfn \"Hello, world! %A\" x")
                 let compiler = new Microsoft.FSharp.Compiler.Driver.InProcCompiler ()
-                let exitCode, output = compiler.Compile [| "fsc"; "foo.fs" |]
+                let exitCode, output = compiler.Compile [| "fsc"; "--out:" + outPath; codePath |]
+                sw.Stop ()
                 for e in output.Errors do
                     match e with
                     | Microsoft.FSharp.Compiler.CompileOps.ErrorOrWarning.Long (_, info) -> printfn "OUTPUT ERROR %A" info.Message
                     | _ -> printfn "OUTPUT ERROR %O" e
                 for e in output.Warnings do
-                    printfn "OUTPUT WARNING %A" e
+                    match e with
+                    | Microsoft.FSharp.Compiler.CompileOps.ErrorOrWarning.Long (_, info) -> printfn "OUTPUT WARNING %A" info.Message
+                    | _ -> printfn "OUTPUT WARNING %O" e
+                let outInfo = new IO.FileInfo(outPath)
+                printfn "OUTPUT %d bytes in %O" (int outInfo.Length) sw.Elapsed
             with ex ->
                 Console.WriteLine (ex)
             ) |> ignore
