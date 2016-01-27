@@ -4005,12 +4005,16 @@ type TcImports(tcConfigP:TcConfigProvider, initialResolutions:TcAssemblyResoluti
                         
             let sigDataReaders = 
                 if List.contains ilShortAssemName externalSigAndOptData then 
-                    let sigFileName = Path.ChangeExtension(filename, "sigdata")
+                    let sigFileName = Path.GetFullPath (Path.ChangeExtension(filename, "sigdata"))
+                    let sigFileNameOther = Path.GetDirectoryName (Path.GetDirectoryName (filename)) + Path.ChangeExtension(Path.GetFileName (filename), "sigdata")
                     if not sigDataReaders.IsEmpty then 
                         error(Error(FSComp.SR.buildDidNotExpectSigdataResource(),m))
-                    if not (FileSystem.SafeExists sigFileName)  then 
-                        error(Error(FSComp.SR.buildExpectedSigdataFile(), m))
-                    [ (ilShortAssemName, (fun () -> FileSystem.ReadAllBytesShim sigFileName))]
+                    let goodName =
+                        if (FileSystem.SafeExists sigFileName)  then sigFileName
+                        else
+                            if (FileSystem.SafeExists sigFileNameOther)  then sigFileNameOther
+                            else error(Error(FSComp.SR.buildExpectedSigdataFile(), m))
+                    [ (ilShortAssemName, (fun () -> FileSystem.ReadAllBytesShim goodName))]
                 else
                     sigDataReaders
             sigDataReaders 
